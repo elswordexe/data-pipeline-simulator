@@ -3,12 +3,13 @@ import random
 from random import randint
 from faker import Faker
 import faker_commerce
+from datetime import timedelta
 
 faker = Faker(['fr_FR'])
 faker.add_provider(faker_commerce.Provider)
 
 class EcommerceDataGenerator:
-
+    
     @staticmethod
     def generate_user(n):
         faker.unique.clear()
@@ -101,6 +102,43 @@ class EcommerceDataGenerator:
             ] = round(total, 2)
 
         return pd.DataFrame(order_items), orders_df
+    @staticmethod
+    def generate_reviews(orders_df, order_items_df):
+    faker.unique.clear()
+    reviews = []
+
+    for _, order in orders_df.iterrows():
+        if order["status"] != "completed":
+            continue
+        if random.random() > 0.6:
+            continue
+
+        items = order_items_df[
+            order_items_df["order_id"] == order["id"]
+        ]
+
+        for _, item in items.iterrows():
+
+            # logique fraude
+            if order["is_fraud"]:
+                rating = randint(1, 2)
+            else:
+                rating = random.choices(
+                    [1, 2, 3, 4, 5],
+                    weights=[5, 10, 20, 30, 35],
+                    k=1
+                )[0]
+
+            reviews.append({
+                "id": faker.unique.random_int(min=1, max=100000),
+                "user_id": order["user_id"],
+                "product_id": item["product_id"],
+                "order_id": order["id"],
+                "rating": rating,
+                "comment": faker.sentence(nb_words=12),
+                "review_date": order["order_date"] + timedelta(days=randint(1, 10))
+            })
+    return pd.DataFrame(reviews)
 
 users_df = EcommerceDataGenerator.generate_user(1000)
 products_df = EcommerceDataGenerator.generate_product(200)
@@ -109,12 +147,16 @@ orders_df = EcommerceDataGenerator.generate_orders(5000, users_df)
 order_items_df, orders_df = EcommerceDataGenerator.generate_order_items(
     orders_df, products_df
 )
+reviews_df = EcommerceDataGenerator.generate_reviews(orders_df, order_items_df)
+
 
 users_df.to_csv("users.csv", index=False)
 products_df.to_csv("products.csv", index=False)
 orders_df.to_csv("orders.csv", index=False)
 order_items_df.to_csv("order_items.csv", index=False)
+reviews_df.to_csv("reviews.csv", index=False)
 
 print(users_df.head())
 print(products_df.head())
 print(orders_df.head())
+print(reviews_df.head())
