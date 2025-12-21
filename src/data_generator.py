@@ -47,8 +47,6 @@ class EcommerceDataGenerator:
 
         for _ in range(n):
             order_date = faker.date_time_this_year()
-
-            # Weekend boost (+30%)
             if order_date.weekday() >= 5 and random.random() < 0.3:
                 continue
 
@@ -118,8 +116,6 @@ class EcommerceDataGenerator:
         ]
 
         for _, item in items.iterrows():
-
-            # logique fraude
             if order["is_fraud"]:
                 rating = randint(1, 2)
             else:
