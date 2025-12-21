@@ -100,12 +100,13 @@ class EcommerceDataGenerator:
             ] = round(total, 2)
 
         return pd.DataFrame(order_items), orders_df
+    
     @staticmethod
     def generate_reviews(orders_df, order_items_df):
-    faker.unique.clear()
-    reviews = []
+     faker.unique.clear()
+     reviews = []
 
-    for _, order in orders_df.iterrows():
+     for _, order in orders_df.iterrows():
         if order["status"] != "completed":
             continue
         if random.random() > 0.6:
@@ -134,7 +135,7 @@ class EcommerceDataGenerator:
                 "comment": faker.sentence(nb_words=12),
                 "review_date": order["order_date"] + timedelta(days=randint(1, 10))
             })
-    return pd.DataFrame(reviews)
+     return pd.DataFrame(reviews)
 
 users_df = EcommerceDataGenerator.generate_user(1000)
 products_df = EcommerceDataGenerator.generate_product(200)
