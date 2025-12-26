@@ -1,3 +1,23 @@
+version: "3.8"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.3
+  restart: always
+  environment:
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:root@db:5432/datadb
+    AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:root@db:5432/datadb
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+  networks:
+    - app-network
+  depends_on:
+    - db
+    - redis
 
 services:
   db:
@@ -24,13 +44,14 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
-      - "5050:80" 
+      - "5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - app-network
     depends_on:
       - db
+    networks:
+      - app-network
+
   redis:
     image: redis:6
     container_name: redis_container
@@ -41,7 +62,7 @@ services:
       - redis_data:/data
     networks:
       - app-network
-  
+
   redisinsight:
     image: redis/redisinsight:latest
     container_name: redisinsight_ui
@@ -50,8 +71,46 @@ services:
       - "5540:5540"
     networks:
       - app-network
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow_init
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create
+      --username admin
+      --password admin
+      --firstname Admin
+      --lastname User
+      --role Admin
+      --email admin@example.com
+      "
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow_webserver
+    command: airflow webserver
+    ports:
+      - "8080:8080"
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow_scheduler
+    command: airflow scheduler
+  airflow-worker:
+    <<: *airflow-common
+    container_name: airflow_worker
+    command: airflow celery worker
+    depends_on:
+      - redis
+      - db
 
-
+  airflow-flower:
+    <<: *airflow-common
+    container_name: airflow_flower
+    command: airflow celery flower
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
 networks:
   app-network:
     driver: bridge
